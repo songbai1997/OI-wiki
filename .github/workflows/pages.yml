@@ -1,0 +1,51 @@
+name: Build and Deploy Pages (Fork)
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Install Node.js dependencies
+        run: yarn --frozen-lockfile --production
+
+      - name: Pre-build (required by OI-wiki)
+        run: ./scripts/pre-build/pre-build.sh
+
+      - name: Build site
+        run: uv run mkdocs build -v
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site
+          enable_jekyll: false
+          force_orphan: true
